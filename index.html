@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Duel - Premium Arcade</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #00ffcc;
+            --neon-magenta: #ff00ff;
+            --neon-yellow: #ffff00;
+            --bg-dark: #050505;
+            --glass-bg: rgba(15, 15, 15, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 100px rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        canvas {
+            display: block;
+            background-color: #000;
+            image-rendering: pixelated;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+            z-index: 10;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: clamp(0.7rem, 3vw, 1.1rem);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .neon-text {
+            text-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+        }
+
+        .neon-p1 { color: var(--neon-cyan); }
+        .neon-p2 { color: var(--neon-magenta); }
+
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--glass-border);
+        }
+
+        .ui-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(1.1);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 8vw, 4rem);
+            margin: 0 0 30px 0;
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan);
+            letter-spacing: 5px;
+            text-align: center;
+        }
+
+        .stats {
+            margin-top: 1rem;
+            font-size: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-family: 'Orbitron', sans-serif;
+            background: transparent;
+            color: #fff;
+            border: 2px solid #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 20px #fff;
+            transform: translateY(-2px);
+        }
+
+        #single-btn { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+        #single-btn:hover { background: var(--neon-cyan); box-shadow: 0 0 25px var(--neon-cyan); }
+
+        #dual-btn { border-color: var(--neon-magenta); color: var(--neon-magenta); }
+        #dual-btn:hover { background: var(--neon-magenta); box-shadow: 0 0 25px var(--neon-magenta); }
+
+        #exit-btn { border-color: #ff4444; color: #ff4444; }
+        #exit-btn:hover { background: #ff4444; box-shadow: 0 0 20px #ff4444; }
+
+        input[type="text"] {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            padding: 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            border-radius: 8px;
+            margin: 5px;
+            text-align: center;
+            transition: all 0.3s ease;
+            width: clamp(150px, 40vw, 220px);
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            box-shadow: 0 0 10px #00ffcc;
+        }
+        /* Scanline effect */
+        .scanlines {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2.2rem; letter-spacing: 2px; }
+            .p-instr { font-size: 0.6rem; }
+            #instructions { gap: 5px; flex-direction: row; }
+            button { padding: 8px 15px; font-size: 0.8rem; margin: 3px; }
+            #hud { padding: 8px 10px; justify-content: center; }
+            #speed-display { order: 3; width: 100%; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="hud">
+            <div><span id="p1-label" class="neon-p1">P1</span>: <span id="p1-score">0</span></div>
+            <div id="speed-display">SPEED: <span id="speed-val">0</span></div>
+            <div><span id="p2-label" class="neon-p2">P2</span>: <span id="p2-score">0</span></div>
+            <button id="exit-btn" style="margin-left: 10px; padding: 5px 10px; font-size: 0.8rem;">EXIT</button>
+        </div>
+        
+        <canvas id="gameCanvas"></canvas>
+        <div class="scanlines"></div>
+
+        <!-- Start Screen -->
+        <div id="start-screen" class="ui-overlay">
+            <h1>NEON DUEL</h1>
+            <div id="name-inputs" style="margin-bottom: 30px; display: flex; flex-wrap: wrap; justify-content: center;">
+                <input type="text" id="p1-name-input" placeholder="PLAYER 1" maxlength="10">
+                <input type="text" id="p2-name-input" placeholder="PLAYER 2" maxlength="10">
+            </div>
+            <div class="controls" style="margin-bottom: 30px;">
+                <button id="single-btn">ENTER SOLITARY</button>
+                <button id="dual-btn">ENTER DUEL</button>
+            </div>
+            <div id="instructions">
+                <div class="p-instr">
+                    <span class="neon-p1">PLAYER 1</span>
+                    ARROWS to move
+                </div>
+                <div class="p-instr">
+                    <span class="neon-p2">PLAYER 2</span>
+                    WASD to move
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="ui-overlay hidden">
+            <h1 id="game-over-title">KO</h1>
+            <div id="winner-text" style="font-size: 1.5rem; margin-bottom: 20px;"></div>
+            <div class="stats">
+                <div id="p1-stats">P1 SCORE: <span id="p1-final" class="neon-p1">0</span></div>
+                <div id="p2-stats">P2 SCORE: <span id="p2-final" class="neon-p2">0</span></div>
+            </div>
+            <button id="restart-btn" style="margin-top: 20px;">Rematch</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const p1ScoreVal = document.getElementById('p1-score');
+        const p2ScoreVal = document.getElementById('p2-score');
+        const speedValDisplay = document.getElementById('speed-val');
+        const winnerText = document.getElementById('winner-text');
+        const p1Final = document.getElementById('p1-final');
+        const p2Final = document.getElementById('p2-final');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const singleBtn = document.getElementById('single-btn');
+        const dualBtn = document.getElementById('dual-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const slowBtn = document.getElementById('slow-btn'); // This button is no longer in HUD, but still referenced.
+        const fastBtn = document.getElementById('fast-btn'); // This button is no longer in HUD, but still referenced.
+        const exitBtn = document.getElementById('exit-btn');
+        const p1NameInput = document.getElementById('p1-name-input');
+        const p2NameInput = document.getElementById('p2-name-input');
+        const p1Label = document.getElementById('p1-label');
+        const p2Label = document.getElementById('p2-label');
+
+        // Game Constants
+        let GRID_SIZE = 30;
+        const INITIAL_SPEED = 120;
+        const MIN_SPEED = 30;
+        const MAX_SPEED = 200;
+
+        // Game State
+        let gameMode = 'dual'; // 'single' or 'dual'
+        let p1 = {
+            name: 'P1',
+            snake: [],
+            dir: 'right',
+            nextDir: 'right',
+            score: 0,
+            active: true,
+            eliminated: false,
+            colorHead: '#00ffcc',
+            colorBody: '#00ccaa'
+        };
+        let p2 = {
+            name: 'P2',
+            snake: [],
+            dir: 'left',
+            nextDir: 'left',
+            score: 0,
+            active: true,
+            eliminated: false,
+            colorHead: '#ff00ff',
+            colorBody: '#cc00cc'
+        };
+        
+        let foods = [];
+        let gameActive = false;
+        let lastUpdateTime = 0;
+        let speed = INITIAL_SPEED;
+        let baseSpeed = INITIAL_SPEED;
+
+        const MAX_FOODS = 5;
+
+        function resizeCanvas() {
+            const padding = 40;
+            const availableHeight = window.innerHeight - 100; // Leave space for HUD
+            const availableWidth = window.innerWidth - padding;
+            
+            const size = Math.min(availableWidth, availableHeight);
+            GRID_SIZE = Math.floor(size / 30);
+            
+            canvas.width = 30 * GRID_SIZE;
+            canvas.height = 30 * GRID_SIZE;
+            
+            if (!gameActive) draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function initGame(mode) {
+            gameMode = mode || gameMode;
+            
+            // Set Names
+            const n1 = p1NameInput.value.trim().toLowerCase();
+            p1.name = (n1 === 'yahya' ? 'yahya' : (n1 || 'P1')).toUpperCase();
+            p1Label.textContent = p1.name;
+
+            if (gameMode === 'dual') {
+                const n2 = p2NameInput.value.trim().toLowerCase();
+                p2.name = (n2 === 'yahya' ? 'yahya' : (n2 || 'P2')).toUpperCase();
+                p2Label.textContent = p2.name;
+                p2NameInput.style.display = 'inline-block';
+            } else {
+                p2NameInput.style.display = 'none';
+            }
+
+            const cols = canvas.width / GRID_SIZE;
+            const rows = canvas.height / GRID_SIZE;
+
+            p1.snake = [{x: 5, y: 15}, {x: 4, y: 15}, {x: 3, y: 15}];
+            p1.dir = 'right';
+            p1.nextDir = 'right';
+            p1.score = 0;
+            p1.active = true;
+            p1.eliminated = false;
+
+            if (gameMode === 'dual') {
+                p2.snake = [{x: cols - 6, y: 15}, {x: cols - 5, y: 15}, {x: cols - 4, y: 15}];
+                p2.dir = 'left';
+                p2.nextDir = 'left';
+                p2.score = 0;
+                p2.active = true;
+                p2.eliminated = false;
+                p2ScoreVal.parentElement.style.display = 'block';
+            } else {
+                p2.active = false;
+                p2.eliminated = true;
+                p2.snake = [];
+                p2ScoreVal.parentElement.style.display = 'none';
+            }
+
+            baseSpeed = INITIAL_SPEED;
+            speed = INITIAL_SPEED;
+            updateScores();
+            foods = [];
+            for (let i = 0; i < MAX_FOODS; i++) spawnFood();
+            gameActive = true;
+            lastUpdateTime = performance.now();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateScores() {
+            p1ScoreVal.textContent = p1.score;
+            if (gameMode === 'dual') p2ScoreVal.textContent = p2.score;
+            speedValDisplay.textContent = Math.round(1000 / speed);
+        }
+
+        function spawnFood() {
+            const newFood = {
+                x: Math.floor(Math.random() * (canvas.width / GRID_SIZE)),
+                y: Math.floor(Math.random() * (canvas.height / GRID_SIZE))
+            };
+            const onSnake = segment => segment.x === newFood.x && segment.y === newFood.y;
+            const onFood = food => food.x === newFood.x && food.y === newFood.y;
+            
+            if (p1.snake.some(onSnake) || p2.snake.some(onSnake) || foods.some(onFood)) {
+                spawnFood();
+            } else {
+                foods.push(newFood);
+            }
+        }
+
+        function handleInput(e) {
+            const key = e.key.toLowerCase();
+            
+            // P1: Arrows
+            if (key === 'arrowup' && p1.dir !== 'down') p1.nextDir = 'up';
+            if (key === 'arrowdown' && p1.dir !== 'up') p1.nextDir = 'down';
+            if (key === 'arrowleft' && p1.dir !== 'right') p1.nextDir = 'left';
+            if (key === 'arrowright' && p1.dir !== 'left') p1.nextDir = 'right';
+
+            // P2: WASD
+            if (key === 'w' && p2.dir !== 'down') p2.nextDir = 'up';
+            if (key === 's' && p2.dir !== 'up') p2.nextDir = 'down';
+            if (key === 'a' && p2.dir !== 'right') p2.nextDir = 'left';
+            if (key === 'd' && p2.dir !== 'left') p2.nextDir = 'right';
+        }
+
+        function moveSnake(p) {
+            p.dir = p.nextDir;
+            const head = { ...p.snake[0] };
+
+            if (p.dir === 'up') head.y -= 1;
+            if (p.dir === 'down') head.y += 1;
+            if (p.dir === 'left') head.x -= 1;
+            if (p.dir === 'right') head.x += 1;
+
+            const cols = canvas.width / GRID_SIZE;
+            const rows = canvas.height / GRID_SIZE;
+
+            if (gameMode === 'dual') {
+                // Wrap around logic
+                if (head.x < 0) head.x = cols - 1;
+                else if (head.x >= cols) head.x = 0;
+                if (head.y < 0) head.y = rows - 1;
+                else if (head.y >= rows) head.y = 0;
+            } else {
+                // Wall collision detection done in checkCollision
+            }
+
+            return head;
+        }
+
+        function checkCollision(head, selfSnake, otherSnake) {
+            if (!head) return false;
+            
+            const cols = canvas.width / GRID_SIZE;
+            const rows = canvas.height / GRID_SIZE;
+
+            if (gameMode === 'single') {
+                // Check wall collision
+                if (head.x < 0 || head.x >= cols || head.y < 0 || head.y >= rows) return true;
+            }
+
+            // Collide with self
+            if (selfSnake.some(s => s.x === head.x && s.y === head.y)) return true;
+            // Collide with other
+            if (otherSnake && otherSnake.some(s => s.x === head.x && s.y === head.y)) return true;
+            return false;
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            const p1Head = p1.active ? moveSnake(p1) : null;
+            const p2Head = p2.active ? moveSnake(p2) : null;
+
+            let p1Col = p1.active ? checkCollision(p1Head, p1.snake, p2.snake) : false;
+            let p2Col = p2.active ? checkCollision(p2Head, p2.snake, p1.snake) : false;
+
+            // Handle head-on collision
+            if (p1Head && p2Head && p1Head.x === p2Head.x && p1Head.y === p2Head.y) {
+                p1Col = true;
+                p2Col = true;
+            }
+
+            if (p1Col) {
+                p1.active = false;
+                p1.eliminated = true;
+                p1.snake = [];
+            }
+            if (p2Col) {
+                p2.active = false;
+                p2.eliminated = true;
+                p2.snake = [];
+            }
+
+            if (!p1.active && !p2.active) {
+                let msg = "DRAW!";
+                if (p1.score > p2.score) msg = "PLAYER 1 WINS!";
+                if (p2.score > p1.score) msg = "PLAYER 2 WINS!";
+                endGame(msg);
+                return;
+            }
+
+            // Update P1
+            if (p1.active) {
+                p1.snake.unshift(p1Head);
+                const p1FoodIdx = foods.findIndex(f => f.x === p1Head.x && f.y === p1Head.y);
+                if (p1FoodIdx !== -1) {
+                    p1.score += 10;
+                    updateScores();
+                    foods.splice(p1FoodIdx, 1);
+                    spawnFood();
+                    baseSpeed = Math.max(MIN_SPEED, baseSpeed - 2);
+                } else {
+                    p1.snake.pop();
+                }
+            }
+
+            // Update P2
+            if (p2.active) {
+                p2.snake.unshift(p2Head);
+                const p2FoodIdx = foods.findIndex(f => f.x === p2Head.x && f.y === p2Head.y);
+                if (p2FoodIdx !== -1) {
+                    p2.score += 10;
+                    updateScores();
+                    foods.splice(p2FoodIdx, 1);
+                    spawnFood();
+                    baseSpeed = Math.max(MIN_SPEED, baseSpeed - 2);
+                } else {
+                    p2.snake.pop();
+                }
+            }
+            
+            speed = Math.max(MIN_SPEED, baseSpeed);
+        }
+
+        function drawSnake(p) {
+            p.snake.forEach((segment, index) => {
+                const isHead = index === 0;
+                ctx.fillStyle = isHead ? p.colorHead : p.colorBody;
+                ctx.shadowBlur = isHead ? 20 : 10;
+                ctx.shadowColor = isHead ? p.colorHead : p.colorBody;
+                const size = isHead ? GRID_SIZE - 2 : GRID_SIZE - 4;
+                const offset = isHead ? 1 : 2;
+                ctx.fillRect(segment.x * GRID_SIZE + offset, segment.y * GRID_SIZE + offset, size, size);
+            });
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0d0d0d';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Subtle Grid
+            ctx.strokeStyle = 'rgba(0, 255, 204, 0.05)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=GRID_SIZE) {ctx.beginPath();ctx.moveTo(i, 0);ctx.lineTo(i, canvas.height);ctx.stroke();}
+            for(let i=0; i<canvas.height; i+=GRID_SIZE) {ctx.beginPath();ctx.moveTo(0, i);ctx.lineTo(canvas.width, i);ctx.stroke();}
+
+            // Food
+            ctx.fillStyle = '#ffff00';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ffff00';
+            foods.forEach(food => {
+                ctx.fillRect(food.x * GRID_SIZE + 2, food.y * GRID_SIZE + 2, GRID_SIZE - 4, GRID_SIZE - 4);
+            });
+
+            if (p1.active) drawSnake(p1);
+            if (p2.active) drawSnake(p2);
+            
+            ctx.shadowBlur = 0;
+        }
+
+        function endGame(msg) {
+            gameActive = false;
+            const title = document.getElementById('game-over-title');
+            if (gameMode === 'single') {
+                title.textContent = "GAME OVER";
+                winnerText.textContent = (p1.name === 'YAHYA' ? 'YAHYA' : 'Score') + ": " + p1.score;
+                document.getElementById('p2-stats').style.display = 'none';
+                document.getElementById('p1-stats').style.display = 'none';
+            } else {
+                title.textContent = "KO";
+                winnerText.textContent = msg;
+                document.getElementById('p2-stats').style.display = 'block';
+                document.getElementById('p1-stats').style.display = 'block';
+                document.querySelector('#p1-stats').childNodes[0].textContent = p1.name + " SCORE: ";
+                document.querySelector('#p2-stats').childNodes[0].textContent = p2.name + " SCORE: ";
+                p1Final.textContent = p1.score;
+                p2Final.textContent = p2.score;
+            }
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        function gameLoop(currentTime) {
+            if (!gameActive) return;
+            const deltaTime = currentTime - lastUpdateTime;
+            if (deltaTime >= speed) {
+                update();
+                draw();
+                lastUpdateTime = currentTime;
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', handleInput);
+        
+        singleBtn.addEventListener('click', () => { 
+            startScreen.classList.add('hidden'); 
+            initGame('single'); 
+        });
+        dualBtn.addEventListener('click', () => { 
+            startScreen.classList.add('hidden'); 
+            initGame('dual'); 
+        });
+        
+        restartBtn.addEventListener('click', () => { 
+            gameOverScreen.classList.add('hidden'); 
+            initGame(); 
+        });
+        exitBtn.addEventListener('click', () => {
+            gameActive = false;
+            startScreen.classList.remove('hidden');
+            gameOverScreen.classList.add('hidden');
+        });
+
+        slowBtn.addEventListener('click', () => { baseSpeed = Math.min(MAX_SPEED, baseSpeed + 20); });
+        fastBtn.addEventListener('click', () => { baseSpeed = Math.max(MIN_SPEED, baseSpeed - 20); });
+
+        resizeCanvas();
+        draw();
+    </script>
+</body>
+</html>
