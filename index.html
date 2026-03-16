@@ -197,14 +197,13 @@
         #d-pad {
             display: none;
             position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 25px;
+            right: 25px; /* Shift to right for thumb reach in landscape */
             grid-template-areas: 
                 ". up ."
                 "left . right"
                 ". down .";
-            gap: 15px;
+            gap: 12px;
             z-index: 30;
         }
 
@@ -233,9 +232,44 @@
         #d-down { grid-area: down; }
         #d-left { grid-area: left; }
         #d-right { grid-area: right; }
+        /* Rotate Device Overlay */
+        #rotate-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 1000;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media (orientation: portrait) and (max-width: 900px) {
+            #rotate-overlay { display: flex; }
+        }
+
+        .rotate-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            animation: rotate 2s infinite ease-in-out;
+            color: var(--neon-cyan);
+        }
+
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(90deg); }
+            100% { transform: rotate(0deg); }
+        }
     </style>
 </head>
 <body>
+    <div id="rotate-overlay">
+        <div class="rotate-icon">📱</div>
+        <h2 style="font-family: 'Orbitron';">ROTATE YOUR DEVICE</h2>
+        <p style="margin-top: 10px; opacity: 0.7;">Landscape mode is required for the best dual action.</p>
+    </div>
 
     <div id="game-container">
         <div id="hud">
@@ -353,15 +387,21 @@
         const MAX_FOODS = 5;
 
         function resizeCanvas() {
-            const padding = 40;
-            const availableHeight = window.innerHeight - 100; // Leave space for HUD
-            const availableWidth = window.innerWidth - padding;
+            const dpr = window.devicePixelRatio || 1;
+            const padding = 20;
+            const hudHeight = 80;
             
-            const size = Math.min(availableWidth, availableHeight);
-            GRID_SIZE = Math.floor(size / 30);
+            const availableWidth = window.innerWidth - padding * 2;
+            const availableHeight = window.innerHeight - hudHeight - padding * 2;
             
-            canvas.width = 30 * GRID_SIZE;
-            canvas.height = 30 * GRID_SIZE;
+            const totalGridSize = 30; // 30x30 board
+            GRID_SIZE = Math.max(10, Math.floor(Math.min(availableWidth, availableHeight) / totalGridSize));
+            
+            canvas.style.width = (totalGridSize * GRID_SIZE) + 'px';
+            canvas.style.height = (totalGridSize * GRID_SIZE) + 'px';
+            canvas.width = totalGridSize * GRID_SIZE * dpr;
+            canvas.height = totalGridSize * GRID_SIZE * dpr;
+            ctx.scale(dpr, dpr);
             
             if (!gameActive) draw();
         }
@@ -636,6 +676,16 @@
             }
             requestAnimationFrame(gameLoop);
         }
+
+        // Fix for initial load and orientation changes
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            setTimeout(resizeCanvas, 100); // Back-up for certain browser quirks
+        });
+        window.addEventListener('orientationchange', () => {
+            setTimeout(resizeCanvas, 200);
+        });
 
         window.addEventListener('keydown', handleInput);
         
